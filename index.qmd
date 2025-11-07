@@ -13,6 +13,9 @@ execute:
   message: false
 ---
 
+
+
+
 ```{python}
 import numpy as np
 import pandas as pd
@@ -123,10 +126,12 @@ table.dataframe {
 
 The variables in the dataset:
 
+We’ll work with a small dataset of students that has four variables:
+
 - **Anxiety** – outcome from an fMRI-based anxiety measure  
-- **Stress** – “true” stress (blood test)  
-- **StressSurvey** – survey-based stress proxy  
-- **Time** – time on social media
+- **Stress** – “true” stress level from a blood test  
+- **StressSurvey** – survey-based proxy for stress  
+- **Time** – hours spent on social media in the last 24 hours  
 
 By construction, the true relationship in the population is
 
@@ -134,12 +139,13 @@ By construction, the true relationship in the population is
 Anxiety = Stress + 0.1 \times Time
 \]
 
-so the true coefficients for a correctly specified model with `Stress` and `Time` are
+So in the correctly specified model with `Stress` and `Time` as predictors, the true coefficients are:
 
 - \( \beta_1 = 1 \) for Stress  
 - \( \beta_2 = 0.1 \) for Time  
 
-`StressSurvey` is meant to mimic Stress but with a non-linear distortion.
+`StressSurvey` is designed to track Stress, but with a non-linear distortion.
+
 
 ```{python}
 #| fig-cap: "How the survey score tracks true stress."
@@ -170,7 +176,8 @@ plt.tight_layout()
 plt.show()
 ```
 
-The survey score increases with true stress, but the spacing is uneven, especially at higher levels.
+The survey score clearly increases with true Stress, but the steps are uneven, especially at higher stress levels. That warped scale is what will cause trouble for the regression models later on.
+
 
 ---
 
@@ -188,9 +195,8 @@ pretty_coef_table(m_stressSurvey, "Bivariate regression: Anxiety ~ StressSurvey"
 
 From this fit, the slope on **StressSurvey** is positive and statistically significant, and the \(R^2\) value shows that the model explains a large share of the variation in Anxiety.
 
-So each one-unit change in StressSurvey is associated with about 1 extra unit of Anxiety on average.
+Interpreted literally, the model says that each one-unit increase in the survey score is associated with roughly one additional unit of Anxiety, on average. That sounds reasonable, but it is not quite what we want. The true relationship is defined in terms of **Stress**, not StressSurvey, and the survey scale is warped. So even though the fit looks strong, the coefficient on StressSurvey does not directly tell us the causal effect of true stress.
 
-Compared to the true model, the target is 1 unit of Anxiety per unit of **Stress**, not per unit of **StressSurvey**. Because the survey scale is warped, the slope is not directly interpretable as the effect of stress even though the fit looks strong.
 
 ```{python}
 #| fig-cap: "Anxiety vs. StressSurvey with fitted bivariate regression line."
@@ -224,7 +230,7 @@ plt.tight_layout()
 plt.show()
 ```
 
-The scatter shows a gentle curve; the straight regression line splits that curve, which already hints that a single constant slope is an oversimplification.
+The scatterplot has a gentle curve, and the straight regression line cuts across it. That already hints that forcing a single constant slope onto this relationship is an oversimplification of how Anxiety responds to Stress in this dataset.
 
 ---
 
@@ -240,9 +246,8 @@ Anxiety = \gamma_0 + \gamma_1 \times Time + \varepsilon.
 pretty_coef_table(m_time_only, "Bivariate regression: Anxiety ~ Time")
 ```
 
-From this fit, the slope on **Time** is positive and statistically significant, but the \(R^2\) value is noticeably lower than in the StressSurvey model.
+From this fit, the slope on **Time** is positive and statistically significant. However, the estimated effect is much larger than the true marginal effect of 0.1 that we know is built into the data, and the \(R^2\) value is noticeably lower than in the StressSurvey model. Time alone is clearly picking up something about Anxiety, but it is not telling the full story.
 
-The true marginal effect of Time is only 0.1, so the bivariate regression overstates the Time effect by more than an order of magnitude. Time is acting as a proxy for Stress because of the way the dataset was generated.
 
 ```{python}
 #| fig-cap: "Anxiety vs. Time on social media with bivariate regression line."
@@ -276,7 +281,8 @@ plt.tight_layout()
 plt.show()
 ```
 
-Visually this looks like a clean positive relationship, but the slope is mostly picking up the pattern that students with higher stress also tend to appear at higher Time values.
+Visually, it looks like a clean positive relationship: students who spend more time on social media also tend to have higher Anxiety. But a lot of that pattern comes from the fact that higher-stress students also tend to appear at higher Time values. In other words, Time is acting as a proxy for Stress when Stress is not included in the model.
+
 
 ---
 
@@ -296,9 +302,10 @@ The key results are:
 
 - StressSurvey coefficient \( \hat\delta_1 \approx 1.36 \), positive and statistically significant  
 - Time coefficient \( \hat\delta_2 \approx -3.46 \), negative but not statistically significant at the 5% level  
-- \( R^2 \) is high, which on its own makes the model look strong
+- \( R^2 \) is high, which on its own makes the model look strong  
 
-The Time effect has now **flipped sign** and looks strongly negative, even though the true effect is positive (0.1). On paper the model looks excellent, but the interpretation is wrong: more Time now seems to *reduce* Anxiety once StressSurvey is included.
+The striking part is the **sign flip** on the Time coefficient. In the true data-generating process, more Time slightly *increases* Anxiety, but once we “control” for StressSurvey, the fitted model suggests that more Time is associated with *lower* Anxiety.
+
 
 ```{python}
 #| fig-cap: "True vs. estimated coefficients (using StressSurvey + Time) – horizontal bar view."
@@ -354,7 +361,8 @@ plt.tight_layout()
 plt.show()
 ```
 
-Even with a high \(R^2\) and at least one very small p-value, this model suggests the opposite of the truth about social media time.
+Even with a high \(R^2\) and at least one very small p-value, this model tells the opposite story about social media time compared to the ground truth. The non-linear survey proxy is bending the regression in a misleading direction.
+
 
 
 ---
@@ -374,10 +382,11 @@ pretty_coef_table(m_true_stress, "Multiple regression: Anxiety ~ Stress + Time (
 Here the estimates from this model are:
 
 - Stress coefficient \( \hat\beta_1 \approx 0.97 \), which is close to the true value of 1.0  
-- Time coefficient \( \hat\beta_2 \approx -0.94 \), which does **not** match the mild positive effect of 0.1 we know is built into the data  
-- The overall \( R^2 \) is still high, so the model appears to fit the data well
+- Time coefficient \( \hat\beta_2 \approx -0.94 \), which does **not** match the mild positive effect of 0.1 that we know is built into the data  
+- The overall \(R^2\) is still high, so the model appears to fit well  
 
-Two models can both look strong from a standard output table, yet still differ in how well they capture the underlying story. Using the more direct Stress measure brings the Stress coefficient close to its true value, but the estimate for Time remains uncertain and even has the wrong sign.
+This shows that even when we use a more direct measure of stress, a small sample and the particular design of the data can leave the estimated Time effect unstable. The model with true Stress is clearly closer to the data-generating story, but it still reminds us not to over-interpret individual coefficients just because they appear in a neat summary table.
+
 ```{python}
 #| fig-cap: "How specification changes the estimated coefficients – true Stress vs survey proxy."
 #| fig-width: 5.8
@@ -427,28 +436,30 @@ plt.show()
 The model that uses StressSurvey gives a large negative Time effect, while the model with true Stress produces a Stress coefficient that is close to the truth and a Time coefficient that is much less extreme but still imprecise.
 
 
+
 ---
 
 ## Q5 – How headlines could mislead people
 
 If the StressSurvey + Time model were reported in the news, a headline might read:
 
-> “After accounting for stress, more time on social media is linked to **lower** anxiety.”
+> “After accounting for stress, more time on social media is linked to lower anxiety.”
 
-Everything in the regression table would look legitimate: high \(R^2\), at least one significant coefficient, and reasonable standard errors.
+Everything in the regression table would look legitimate: high \(R^2\), at least one significant coefficient, and reasonable standard errors. Parents reading that headline might feel reassured, and social-media companies would be happy to promote it.
 
+If the model with true Stress were reported instead, a more realistic headline could be:
 
-If the correct model with true Stress were reported, a much more plausible headline would be:
+> “More time on social media is associated with higher anxiety, even after controlling for stress.”
 
-> “More time on social media is associated with **higher** anxiety, even after controlling for stress.”
+Both models are estimated on exactly the same data but tell opposite stories. The difference comes entirely from how stress is measured and modeled.
 
-The two models produce opposite stories even though they are both estimated on the same data and both look solid statistically. The difference comes entirely from the way stress is measured and modeled.
 
 ---
 
 ## Q6 – Subset analysis: focusing on a more linear region
 
-The main distortion comes from how the survey compresses the high-stress range. To see what happens when the relationship is closer to linear, restrict the sample to
+The main distortion comes from how the survey compresses the high-stress range. To see what happens in a region where the relationship is closer to linear, restrict the sample to
+
 
 \[
 \text{Stress} \le 2
@@ -469,7 +480,8 @@ On this subset the results become:
 - The model’s \(R^2\) remains high, but not perfect
 
 
-Since `StressSurvey ≈ 3 × Stress` in this region, a slope around 0.29 on the survey corresponds to just under 0.9 per unit of true Stress, which is much closer to the intended value of 1 than what we saw before. The Time effect is now very small and statistically indistinguishable from zero, which is much closer to the true mild effect of 0.1 than the large negative estimate we saw in the earlier model.
+In this region, `StressSurvey ≈ 3 × Stress`, so a slope around 0.29 on the survey corresponds to just under 0.9 per unit of true Stress. That is much closer to the intended value of 1 than what we saw before. The Time effect is now very small and statistically indistinguishable from zero, which is much closer to the true mild effect of 0.1 than the earlier large negative estimate.
+
 ```{python}
 #| fig-cap: "Highlighting the low-stress region where the survey behaves more linearly."
 #| fig-width: 5.4
@@ -510,12 +522,16 @@ plt.tight_layout()
 plt.show()
 ```
 
-When the proxy behaves almost linearly, the regression has a much easier time recovering the underlying story. Once the strongly non-linear part of the scale is folded in, the slopes swing to unrealistic values, including sign flips.
+When the proxy behaves almost linearly, the regression has a much easier time recovering a sensible relationship between StressSurvey and Anxiety. Once the strongly non-linear part of the scale is included, the slopes swing to unrealistic values, including sign flips.
+
 
 ---
 
 ## Takeaways
 
-- A high \(R^2\) and significant coefficients do not guarantee that the slopes tell a sensible story.  
-- Using a non-linear proxy (StressSurvey) in place of a more direct measure (Stress) can completely invert the apparent effect of another variable (Time).  
-- Visual checks, thinking carefully about how variables are measured, and exploring subsets where relationships are closer to linear are essential before trusting a linear regression model for interpretation.
+### Takeaways
+
+- A high \(R^2\) and statistically significant coefficients do **not** guarantee that the slopes tell a sensible story.  
+- Using a non-linear proxy (like StressSurvey) in place of a more direct measure (Stress) can completely change, or even invert, the apparent effect of another variable (Time).  
+- Visual checks, thinking carefully about how variables are measured, and exploring regions where relationships are closer to linear are essential before trusting a linear regression model for interpretation.
+
