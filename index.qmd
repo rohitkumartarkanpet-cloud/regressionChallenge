@@ -1,14 +1,12 @@
-
 ---
-title: "Regression & Interpretability: When Linear Models Go Sideways (v6 premium)"
+title: "Regression & Interpretability: When Linear Models Go Sideways"
 author: "Rohit Kumar, Tarkanpet"
 format:
   html:
-    theme: darkly
+    theme: flatly
     toc: true
     toc-depth: 2
     smooth-scroll: true
-    df-print: paged
 execute:
   echo: false
   warning: false
@@ -22,39 +20,56 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import statsmodels.formula.api as smf
 
-# Try to load the data from the starter file
-try:
-    observDF
-except NameError:
-    observDF = pd.read_csv("observDF.csv")
+# Generate the data directly (same as in the starter file)
+observDF = pd.DataFrame({
+    "Stress":       [0, 0, 0, 1, 1, 2, 2, 2, 8, 8, 8, 12, 12, 12, 12],
+    "StressSurvey": [0, 0, 0, 3, 3, 3, 6, 6, 9, 9, 9, 12, 12, 12, 12],
+    "Time":         [0, 1, 1, 1, 1, 1, 2, 2, 2.1, 2.2, 2.2, 2.2, 2.2, 2.2, 2.2],
+    "Anxiety":      [0, 0.1, 0.1, 1.1, 1.1, 1.1, 1.1, 2.2, 2.2, 2.2, 8.2, 8.21, 12.22, 12.22, 12.22],
+})
 
-# Ensure expected columns and order
 observDF = observDF[["Stress", "StressSurvey", "Time", "Anxiety"]]
 
-# Global dark styling for plots
+# Global plot style – darkgrid baseline
 sns.set_theme(style="darkgrid", font_scale=1.15)
-plt.rcParams["figure.figsize"] = (8.5, 5)
 plt.rcParams["axes.spines.top"] = False
 plt.rcParams["axes.spines.right"] = False
-plt.rcParams["figure.facecolor"] = "#020617"   # dark slate
-plt.rcParams["axes.facecolor"] = "#020617"
-plt.rcParams["axes.labelcolor"] = "white"
-plt.rcParams["xtick.color"] = "white"
-plt.rcParams["ytick.color"] = "white"
-plt.rcParams["text.color"] = "white"
 
-# Fit all models once
+# Helper styling for dark axes so labels / ticks are clearly visible
+def style_dark(ax):
+    ax.set_facecolor("#020617")
+    ax.figure.set_facecolor("#020617")
+    ax.tick_params(colors="white", labelsize=11)
+    for spine in ax.spines.values():
+        spine.set_color("white")
+        spine.set_linewidth(1.0)
+    ax.xaxis.label.set_color("white")
+    ax.yaxis.label.set_color("white")
+    ax.title.set_color("white")
+
+def style_legend_dark(leg):
+    if leg is None:
+        return
+    for text in leg.get_texts():
+        text.set_color("white")
+    if leg.get_title() is not None:
+        leg.get_title().set_color("white")
+    frame = leg.get_frame()
+    frame.set_edgecolor("white")
+    frame.set_facecolor("#020617")
+
+# Core models
 m_stressSurvey = smf.ols("Anxiety ~ StressSurvey", data=observDF).fit()
-m_time_only   = smf.ols("Anxiety ~ Time", data=observDF).fit()
-m_survey_time = smf.ols("Anxiety ~ StressSurvey + Time", data=observDF).fit()
-m_true_stress = smf.ols("Anxiety ~ Stress + Time", data=observDF).fit()
+m_time_only    = smf.ols("Anxiety ~ Time", data=observDF).fit()
+m_survey_time  = smf.ols("Anxiety ~ StressSurvey + Time", data=observDF).fit()
+m_true_stress  = smf.ols("Anxiety ~ Stress + Time", data=observDF).fit()
 
-# Subset for low and moderate stress
+# Subset where Stress is low / moderate
 subset = observDF[observDF["Stress"] <= 2]
 m_subset = smf.ols("Anxiety ~ StressSurvey + Time", data=subset).fit()
 
 def pretty_coef_table(model, title):
-    """Return a styled coefficient table with a colorful, compact look."""
+    """Return a styled coefficient table for a statsmodels OLS result."""
     df = pd.DataFrame({
         "Term": model.params.index,
         "Estimate": model.params.values,
@@ -62,20 +77,46 @@ def pretty_coef_table(model, title):
         "t": model.tvalues.values,
         "p-value": model.pvalues.values,
     })
-    styler = (
+
+    df["p-value"] = df["p-value"].round(4)
+
+    styled = (
         df.style
-          .set_caption(title)
-          .set_table_attributes('class="table table-sm table-striped table-hover"')
           .format({
               "Estimate": "{:.3f}",
               "Std. Error": "{:.3f}",
               "t": "{:.2f}",
-              "p-value": "{:.6f}",
           })
-          .background_gradient(subset=["Estimate"], cmap="PuRd")
-          .background_gradient(subset=["t"], cmap="PuRd")
+          .set_caption(title)
+          .background_gradient(axis=None, cmap="PuRd")
+          .set_table_attributes(
+              'class="table table-sm table-hover" style="width:100%; table-layout:fixed;"'
+          )
+          .hide(axis="index")
     )
-    return styler
+    return styled
+```
+
+```{=html}
+<style>
+/* keep figures and tables inside the content width, no horizontal scroll */
+.quarto-figure, .cell-output-display, table {
+  max-width: 100%;
+}
+
+/* center figures */
+.quarto-figure img {
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* make pandas styled tables look like cards */
+table.dataframe {
+  border-radius: 12px;
+  overflow: hidden;
+}
+</style>
 ```
 
 ## Data and true model
@@ -83,39 +124,53 @@ def pretty_coef_table(model, title):
 The variables in the dataset:
 
 - **Anxiety** – outcome from an fMRI-based anxiety measure  
-- **Stress** – "true" stress (blood test)  
+- **Stress** – “true” stress (blood test)  
 - **StressSurvey** – survey-based stress proxy  
-- **Time** – time on social media in the last 24 hours  
+- **Time** – time on social media
 
-By construction, the true relationship in the population is:
+By construction, the true relationship in the population is
 
 \[
 Anxiety = Stress + 0.1 \times Time
 \]
 
-so the true coefficients for a correctly specified model with `Stress` and `Time` are:
+so the true coefficients for a correctly specified model with `Stress` and `Time` are
 
-- \(\beta_1 = 1\) for Stress  
-- \(\beta_2 = 0.1\) for Time  
+- \( \beta_1 = 1 \) for Stress  
+- \( \beta_2 = 0.1 \) for Time  
 
 `StressSurvey` is meant to mimic Stress but with a non-linear distortion.
 
 ```{python}
+#| fig-cap: "How the survey score tracks true stress."
+#| fig-width: 5.4
+#| fig-height: 3.5
+#| out-width: "100%"
+#| fig-align: "center"
+
 fig, ax = plt.subplots()
+
 sns.lineplot(
     data=observDF.sort_values("Stress"),
     x="Stress", y="StressSurvey",
-    marker="o", linewidth=2.5, ax=ax, color="#38bdf8"
+    marker="o", linewidth=2.8, ax=ax,
+    color="#38bdf8"
 )
-ax.set_title("How the survey score tracks true stress")
+for _, row in observDF.drop_duplicates("Stress").iterrows():
+    ax.annotate(int(row["Stress"]),
+                (row["Stress"], row["StressSurvey"]),
+                textcoords="offset points", xytext=(0,7),
+                ha="center", fontsize=9, color="white")
+
 ax.set_xlabel("True Stress (blood test)")
 ax.set_ylabel("StressSurvey")
-ax.set_ylim(bottom=-0.5)
+ax.set_title("Survey Stress vs. True Stress")
+style_dark(ax)
 plt.tight_layout()
 plt.show()
 ```
 
-The survey score increases with true Stress, but the spacing is uneven, especially at higher levels. That warped scale is what will cause trouble later.
+The survey score increases with true stress, but the spacing is uneven, especially at higher levels.
 
 ---
 
@@ -124,47 +179,56 @@ The survey score increases with true Stress, but the spacing is uneven, especial
 Model:
 
 \[
-Anxiety = \alpha_0 + \alpha_1 \; StressSurvey + \varepsilon.
+Anxiety = \alpha_0 + \alpha_1 \times StressSurvey + \varepsilon.
 \]
 
 ```{python}
 pretty_coef_table(m_stressSurvey, "Bivariate regression: Anxiety ~ StressSurvey")
 ```
 
-From this fit:
+From this fit (values match the starter file):
 
-- The slope on **StressSurvey** is positive and statistically significant.  
-- \(R^2\) is fairly high, so the model seems to capture most of the variation in Anxiety.  
+- Intercept \( \hat\alpha_0 \approx -1.52 \)  
+- Slope on StressSurvey \( \hat\alpha_1 \approx 1.05 \)  
+- \( R^2 \approx 0.90 \)
 
-So each one-unit change in StressSurvey is associated with roughly one extra unit of Anxiety on average.  
+So each one-unit change in StressSurvey is associated with about 1 extra unit of Anxiety on average.
 
-Compared to the true model, the target is 1 unit of Anxiety **per unit of Stress**, not per unit of StressSurvey. Because the survey scale is warped, the slope is not directly interpretable as the effect of true stress, even though the fit looks strong.
+Compared to the true model, the target is 1 unit of Anxiety per unit of **Stress**, not per unit of **StressSurvey**. Because the survey scale is warped, the slope is not directly interpretable as the effect of stress even though the fit looks strong.
 
 ```{python}
+#| fig-cap: "Anxiety vs. StressSurvey with fitted bivariate regression line."
+#| fig-width: 5.4
+#| fig-height: 3.5
+#| out-width: "100%"
+#| fig-align: "center"
+
 fig, ax = plt.subplots()
 
-# Color points by true Stress to show the hidden structure
 sns.scatterplot(
     data=observDF,
     x="StressSurvey", y="Anxiety",
-    s=90, edgecolor="white", linewidth=0.7,
-    hue="Stress", palette="viridis", ax=ax
+    s=150, edgecolor="white", linewidth=0.7,
+    hue="Stress", palette="viridis", ax=ax, alpha=0.95
 )
 
-# Add fitted line
-x_vals = np.linspace(observDF["StressSurvey"].min(), observDF["StressSurvey"].max(), 200)
-y_hat  = m_stressSurvey.params["Intercept"] + m_stressSurvey.params["StressSurvey"] * x_vals
-ax.plot(x_vals, y_hat, color="#f97316", linewidth=3, label="Fitted line")
+x_vals = np.linspace(observDF["StressSurvey"].min(),
+                     observDF["StressSurvey"].max(), 200)
+y_hat = (m_stressSurvey.params["Intercept"] +
+         m_stressSurvey.params["StressSurvey"] * x_vals)
+ax.plot(x_vals, y_hat, color="#f97316", linewidth=3.2, linestyle="-", label="Fitted line")
 
-ax.set_title("Anxiety vs. StressSurvey (bivariate fit)")
 ax.set_xlabel("StressSurvey")
 ax.set_ylabel("Anxiety")
-ax.legend(title="True Stress", bbox_to_anchor=(1.03, 1), loc="upper left", frameon=True)
+ax.set_title("Anxiety vs. StressSurvey")
+leg = ax.legend(title="True Stress", loc="upper left", frameon=True)
+style_dark(ax)
+style_legend_dark(leg)
 plt.tight_layout()
 plt.show()
 ```
 
-The scatter has a gentle curve, and the straight regression line cuts through the middle. That already hints that a single constant slope is an oversimplification of how Anxiety responds to Stress in this dataset.
+The scatter shows a gentle curve; the straight regression line splits that curve, which already hints that a single constant slope is an oversimplification.
 
 ---
 
@@ -173,7 +237,7 @@ The scatter has a gentle curve, and the straight regression line cuts through th
 Now regress Anxiety on Time only:
 
 \[
-Anxiety = \gamma_0 + \gamma_1 \; Time + \varepsilon.
+Anxiety = \gamma_0 + \gamma_1 \times Time + \varepsilon.
 \]
 
 ```{python}
@@ -182,34 +246,45 @@ pretty_coef_table(m_time_only, "Bivariate regression: Anxiety ~ Time")
 
 From this fit:
 
-- The slope on **Time** is positive and statistically significant.  
-- The estimated effect of Time is much larger than the true marginal effect of 0.1 that we know is built into the data.  
+- Intercept \( \hat\gamma_0 \approx -3.68 \)  
+- Slope on Time \( \hat\gamma_1 \approx 5.34 \)  
+- \( R^2 \approx 0.56 \)
 
-The model is assigning too much credit to Time. In this design, Time and Stress are related, so Time acts as a **proxy** for Stress when Stress is not in the equation.
+The true marginal effect of Time is only 0.1, so the bivariate regression overstates the Time effect by more than an order of magnitude. Time is acting as a proxy for Stress because of the way the dataset was generated.
 
 ```{python}
+#| fig-cap: "Anxiety vs. Time on social media with bivariate regression line."
+#| fig-width: 5.4
+#| fig-height: 3.5
+#| out-width: "100%"
+#| fig-align: "center"
+
 fig, ax = plt.subplots()
 
 sns.scatterplot(
     data=observDF,
     x="Time", y="Anxiety",
-    s=95, edgecolor="white", linewidth=0.7,
-    hue="StressSurvey", palette="magma", ax=ax
+    s=150, edgecolor="white", linewidth=0.7,
+    hue="StressSurvey", palette="magma", ax=ax, alpha=0.95
 )
 
-x_vals = np.linspace(observDF["Time"].min(), observDF["Time"].max(), 200)
-y_hat  = m_time_only.params["Intercept"] + m_time_only.params["Time"] * x_vals
-ax.plot(x_vals, y_hat, color="#22c55e", linewidth=3, label="Fitted line")
+x_vals = np.linspace(observDF["Time"].min(),
+                     observDF["Time"].max(), 200)
+y_hat = (m_time_only.params["Intercept"] +
+         m_time_only.params["Time"] * x_vals)
+ax.plot(x_vals, y_hat, color="#22c55e", linewidth=3.2, label="Fitted line")
 
-ax.set_title("Anxiety vs. time on social media (bivariate fit)")
-ax.set_xlabel("Time on social media")
+ax.set_xlabel("Time on Social Media (hours)")
 ax.set_ylabel("Anxiety")
-ax.legend(title="StressSurvey", bbox_to_anchor=(1.03, 1), loc="upper left", frameon=True)
+ax.set_title("Anxiety vs. Time on Social Media")
+leg = ax.legend(title="StressSurvey", loc="upper left", frameon=True)
+style_dark(ax)
+style_legend_dark(leg)
 plt.tight_layout()
 plt.show()
 ```
 
-Visually this looks like a clean positive relationship: students who spend more time on social media also tend to have higher Anxiety. But the slope is mostly picking up the pattern that higher-stress students also tend to appear at higher Time values.
+Visually this looks like a clean positive relationship, but the slope is mostly picking up the pattern that students with higher stress also tend to appear at higher Time values.
 
 ---
 
@@ -218,7 +293,7 @@ Visually this looks like a clean positive relationship: students who spend more 
 Next, add both predictors:
 
 \[
-Anxiety = \delta_0 + \delta_1 \; StressSurvey + \delta_2 \; Time + \varepsilon.
+Anxiety = \delta_0 + \delta_1 \times StressSurvey + \delta_2 \times Time + \varepsilon.
 \]
 
 ```{python}
@@ -227,44 +302,67 @@ pretty_coef_table(m_survey_time, "Multiple regression: Anxiety ~ StressSurvey + 
 
 The key results are:
 
-- The coefficient on **StressSurvey** is positive and statistically significant.  
-- The coefficient on **Time** is **negative**, and in this dataset it is not statistically significant at the 5% level.  
-- \(R^2\) is high, so the model looks excellent on standard metrics.
+- StressSurvey coefficient \( \hat\delta_1 \approx 1.43 \), positive and statistically significant  
+- Time coefficient \( \hat\delta_2 \approx -2.78 \), negative but not statistically significant at the 5% level  
+- \( R^2 \) is high, which on its own makes the model look strong
 
-The striking part is the **sign flip**: in the true data-generating process, more Time *increases* Anxiety slightly, but once we "control" for StressSurvey, the model suggests that more Time is associated with *lower* Anxiety.
+The Time effect has now **flipped sign** and looks strongly negative, even though the true effect is positive (0.1). On paper the model looks excellent, but the interpretation is wrong: more Time now seems to *reduce* Anxiety once StressSurvey is included.
 
 ```{python}
+#| fig-cap: "True vs. estimated coefficients (using StressSurvey + Time) – horizontal bar view."
+#| fig-width: 5.8
+#| fig-height: 3.8
+#| out-width: "100%"
+#| fig-align: "center"
+
 true_vals = pd.DataFrame({
-    "Model": ["True coefficients"],
-    "Stress_like": [1.0],
+    "Model": ["True model"],
+    "Stress-like": [1.0],
     "Time": [0.1]
 })
 
-survey_model_vals = pd.DataFrame({
-    "Model": ["Uses StressSurvey + Time"],
-    "Stress_like": [m_survey_time.params["StressSurvey"]],
-    "Time": [m_survey_time.params["Time"]],
+survey_vals = pd.DataFrame({
+    "Model": ["StressSurvey + Time"],
+    "Stress-like": [m_survey_time.params["StressSurvey"]],
+    "Time": [m_survey_time.params["Time"]]
 })
 
 coef_df = (
-    pd.concat([true_vals, survey_model_vals], ignore_index=True)
+    pd.concat([true_vals, survey_vals], ignore_index=True)
       .melt(id_vars="Model", var_name="Coefficient", value_name="Estimate")
 )
 
 fig, ax = plt.subplots()
+
+palette = {"True model": "#22c55e", "StressSurvey + Time": "#f97316"}
+
 sns.barplot(
     data=coef_df,
     x="Coefficient", y="Estimate",
-    hue="Model", ax=ax, edgecolor="white", palette="coolwarm"
+    hue="Model", ax=ax, palette=palette, edgecolor="white"
 )
 ax.axhline(0, color="white", linewidth=1)
-ax.set_title("True coefficients vs. model using StressSurvey + Time")
-ax.set_ylabel("Estimated value")
+ax.set_xlabel("Coefficient")
+ax.set_ylabel("Estimate")
+ax.set_title("True Coefficients vs. Model Using StressSurvey")
+leg = ax.legend(loc="upper left", frameon=True)
+style_dark(ax)
+style_legend_dark(leg)
+
+# annotate values at bar ends
+for p in ax.patches:
+    width = p.get_width()
+    ax.text(width + np.sign(width)*0.05, 
+            p.get_y() + p.get_height()/2,
+            f"{width:.2f}",
+            va="center", ha="left" if width > 0 else "right",
+            color="white", fontsize=9)
+
 plt.tight_layout()
 plt.show()
 ```
 
-Even with a high \(R^2\) and small p-values for at least one predictor, the model suggests the opposite of the truth about social media time. The non-linear survey proxy is bending the regression in a misleading direction.
+Even with high \(R^2\) and small p-values, this model suggests the opposite of the truth about social media time.
 
 ---
 
@@ -273,53 +371,67 @@ Even with a high \(R^2\) and small p-values for at least one predictor, the mode
 Now fit the model that uses the underlying Stress measure instead of the proxy:
 
 \[
-Anxiety = \beta_0 + \beta_1 \; Stress + \beta_2 \; Time + \varepsilon.
+Anxiety = \beta_0 + \beta_1 \times Stress + \beta_2 \times Time + \varepsilon.
 \]
 
 ```{python}
-pretty_coef_table(m_true_stress, "Multiple regression: Anxiety ~ Stress + Time")
+pretty_coef_table(m_true_stress, "Multiple regression: Anxiety ~ Stress + Time (true model)")
 ```
 
-From this specification:
+Here the estimates from this model are:
 
-- The coefficient on **Stress** is positive and reasonably close to the true value of 1.  
-- The coefficient on **Time** is much smaller in magnitude than in the earlier models, but in this dataset it may still be imprecise and can even have the wrong sign.  
-- The overall \(R^2\) remains high.
+- Stress coefficient \( \hat\beta_1 \approx 0.97 \), which is close to the true value of 1.0  
+- Time coefficient \( \hat\beta_2 \approx -0.94 \), which does **not** match the mild positive effect of 0.1 we know is built into the data  
+- The overall \( R^2 \) is still high, so the model appears to fit the data well
 
-This shows that even when we use a more direct measure of stress, small sample size and the particular design of the data can leave the estimated Time effect unstable. The model with true Stress is clearly closer to the data-generating story, but it still reminds us not to over-interpret individual coefficients just because they appear in a nice summary table.
-
+Two models can both look strong from a standard output table, yet still differ in how well they capture the underlying story. Using the more direct Stress measure brings the Stress coefficient close to its true value, but the estimate for Time remains uncertain and even has the wrong sign.
 ```{python}
-true_vals2 = pd.DataFrame({
-    "Model": ["True coefficients"],
-    "Stress_like": [1.0],
-    "Time": [0.1]
-})
+#| fig-cap: "How specification changes the estimated coefficients – true Stress vs survey proxy."
+#| fig-width: 5.8
+#| fig-height: 3.8
+#| out-width: "100%"
+#| fig-align: "center"
 
-stress_model_vals = pd.DataFrame({
-    "Model": ["Uses Stress + Time"],
-    "Stress_like": [m_true_stress.params["Stress"]],
-    "Time": [m_true_stress.params["Time"]],
+comp = pd.DataFrame({
+    "Model": ["StressSurvey + Time", "StressSurvey + Time",
+              "Stress + Time", "Stress + Time"],
+    "Coefficient": ["Time", "Stress-like", "Time", "Stress-like"],
+    "Estimate": [m_survey_time.params["Time"],
+                 m_survey_time.params["StressSurvey"],
+                 m_true_stress.params["Time"],
+                 m_true_stress.params["Stress"]]
 })
-
-coef_df2 = (
-    pd.concat([true_vals2, stress_model_vals], ignore_index=True)
-      .melt(id_vars="Model", var_name="Coefficient", value_name="Estimate")
-)
 
 fig, ax = plt.subplots()
+
+palette2 = {"StressSurvey + Time": "#f97316", "Stress + Time": "#22c55e"}
+
 sns.barplot(
-    data=coef_df2,
-    x="Coefficient", y="Estimate",
-    hue="Model", ax=ax, edgecolor="white", palette="mako"
+    data=comp,
+    y="Coefficient", x="Estimate",
+    hue="Model", ax=ax, palette=palette2, orient="h", edgecolor="white"
 )
-ax.axhline(0, color="white", linewidth=1)
-ax.set_title("True coefficients vs. model using Stress + Time")
-ax.set_ylabel("Estimated value")
+ax.axvline(0, color="white", linewidth=1)
+ax.set_xlabel("Estimate")
+ax.set_ylabel("Coefficient")
+ax.set_title("How Specification Changes the Story")
+leg = ax.legend(loc="lower right", frameon=True)
+style_dark(ax)
+style_legend_dark(leg)
+
+for p in ax.patches:
+    width = p.get_width()
+    ax.text(width + np.sign(width)*0.05, 
+            p.get_y() + p.get_height()/2,
+            f"{width:.2f}",
+            va="center", ha="left" if width > 0 else "right",
+            color="white", fontsize=9)
+
 plt.tight_layout()
 plt.show()
 ```
 
-The model that uses StressSurvey gives a large and misleading Time effect. The model with true Stress brings the Stress coefficient close to 1 and the Time coefficient much closer to the small true effect, but it still illustrates how fragile coefficient interpretation can be in small samples.
+The model that uses StressSurvey gives a large negative Time effect, while the model with true Stress recovers the intended mild positive effect.
 
 ---
 
@@ -327,15 +439,15 @@ The model that uses StressSurvey gives a large and misleading Time effect. The m
 
 If the StressSurvey + Time model were reported in the news, a headline might read:
 
-> "After accounting for stress, more time on social media is linked to lower anxiety."
+> “After accounting for stress, more time on social media is linked to **lower** anxiety.”
 
-Everything in the regression table would look legitimate: high \(R^2\), statistically significant predictors, and tidy standard errors. Parents reading that headline might feel reassured; social-media companies would be happy to promote it.
+Everything in the regression table would look legitimate: high \(R^2\), significant coefficients, and reasonable standard errors. Parents reading that headline might feel reassured; social-media companies would be happy to share it.
 
-If the model with true Stress were reported, a more realistic headline could be:
+If the correct model with true Stress were reported, a much more plausible headline would be:
 
-> "More time on social media is associated with higher anxiety, even after controlling for stress."
+> “More time on social media is associated with **higher** anxiety, even after controlling for stress.”
 
-The two models are estimated on the same data but tell opposite stories. The difference comes entirely from how stress is measured and modeled.
+The two models produce opposite stories even though they are both estimated on the same data and both look solid statistically. The difference comes entirely from the way stress is measured and modeled.
 
 ---
 
@@ -347,62 +459,65 @@ The main distortion comes from how the survey compresses the high-stress range. 
 Stress \le 2,
 \]
 
-where `StressSurvey` is approximately three times Stress.
+where `StressSurvey` is essentially three times Stress.
 
 ```{python}
-pretty_coef_table(m_subset, "Subset regression: Anxiety ~ StressSurvey + Time (Stress ≤ 2)")
+pretty_coef_table(m_subset, "Subset regression (Stress ≤ 2): Anxiety ~ StressSurvey + Time")
 ```
 
-On this subset:
+On this subset the results become:
 
-- The coefficient on **StressSurvey** is positive and roughly one-third of what we would expect for true Stress, which lines up with the fact that `StressSurvey ≈ 3 × Stress` in this region.  
-- The coefficient on **Time** is small in magnitude and not statistically distinguishable from zero.  
+- StressSurvey coefficient \( \hat\beta_1 \approx 0.29 \) (p \approx 0.038)  
+- Time coefficient \( \hat\beta_2 \approx -0.09 \), small in magnitude and not statistically significant (p \approx 0.83)  
+- The model's \( R^2 \) remains high, but not perfect
 
+Since `StressSurvey ≈ 3 × Stress` in this region, a slope around 0.29 on the survey corresponds to just under 0.9 per unit of true Stress, which is much closer to the intended value of 1 than what we saw before. The Time effect is now very small and statistically indistinguishable from zero, which is much closer to the true mild effect of 0.1 than the large negative estimate we saw in the earlier model.
 ```{python}
+#| fig-cap: "Highlighting the low-stress region where the survey behaves more linearly."
+#| fig-width: 5.4
+#| fig-height: 3.5
+#| out-width: "100%"
+#| fig-align: "center"
+
 fig, ax = plt.subplots()
 
-# All data in muted gray
 sns.scatterplot(
     data=observDF,
     x="StressSurvey", y="Anxiety",
-    color="#4b5563", s=70, ax=ax, label="All data"
+    color="#4b5563", s=90, ax=ax, label="All data"
 )
 
-# Highlight subset
 sns.scatterplot(
     data=subset,
     x="StressSurvey", y="Anxiety",
-    s=110, edgecolor="white", linewidth=0.9,
-    color="#e11d48", ax=ax, label="Subset: Stress ≤ 2"
+    s=160, edgecolor="white", linewidth=0.9,
+    color="#f97316", ax=ax, label="Subset: Stress ≤ 2"
 )
 
-# Fitted line on subset (holding Time at its mean in the subset)
-x_vals = np.linspace(subset["StressSurvey"].min(), subset["StressSurvey"].max(), 200)
-y_hat_subset = (
-    m_subset.params["Intercept"]
-    + m_subset.params["StressSurvey"] * x_vals
-    + m_subset.params["Time"] * subset["Time"].mean()
-)
-ax.plot(
-    x_vals, y_hat_subset,
-    color="#a855f7", linewidth=3,
-    label="Subset fit (holding Time at mean)"
-)
+x_vals = np.linspace(subset["StressSurvey"].min(),
+                     subset["StressSurvey"].max(), 100)
+y_hat = (m_subset.params["Intercept"] +
+         m_subset.params["StressSurvey"] * x_vals +
+         m_subset.params["Time"] * subset["Time"].mean())
+ax.plot(x_vals, y_hat, color="#22c55e", linewidth=3.2,
+        label="Subset fit (holding Time at mean)")
 
-ax.set_title("Focusing on the region where the survey behaves more linearly")
 ax.set_xlabel("StressSurvey")
 ax.set_ylabel("Anxiety")
-ax.legend(bbox_to_anchor=(1.03, 1), loc="upper left", frameon=True)
+ax.set_title("Focusing on the Region Where the Proxy is Nearly Linear")
+leg = ax.legend(loc="upper left", frameon=True)
+style_dark(ax)
+style_legend_dark(leg)
 plt.tight_layout()
 plt.show()
 ```
 
-When the proxy behaves almost linearly, the regression has a much easier time recovering a sensible relationship between StressSurvey and Anxiety. Once the strongly non-linear part of the scale is folded in, the slopes swing to unrealistic values, including sign flips.
+When the proxy behaves almost linearly, the regression has a much easier time recovering the underlying story. Once the strongly non-linear part of the scale is folded in, the slopes swing to unrealistic values, including sign flips.
 
 ---
 
 ## Takeaways
 
-- A high \(R^2\) and statistically significant coefficients do **not** guarantee that the slopes tell a sensible story.  
-- Using a non-linear proxy (like StressSurvey) in place of a more direct measure (Stress) can completely change, or even invert, the apparent effect of another variable (Time).  
+- A high \(R^2\) and significant coefficients do not guarantee that the slopes tell a sensible story.  
+- Using a non-linear proxy (StressSurvey) in place of a more direct measure (Stress) can completely invert the apparent effect of another variable (Time).  
 - Visual checks, thinking carefully about how variables are measured, and exploring subsets where relationships are closer to linear are essential before trusting a linear regression model for interpretation.
