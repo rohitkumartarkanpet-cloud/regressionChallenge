@@ -294,8 +294,8 @@ pretty_coef_table(m_survey_time, "Multiple regression: Anxiety ~ StressSurvey + 
 
 The key results are:
 
-- StressSurvey coefficient \( \hat\delta_1 \approx 1.43 \), positive and statistically significant  
-- Time coefficient \( \hat\delta_2 \approx -2.78 \), negative but not statistically significant at the 5% level  
+- StressSurvey coefficient \( \hat\delta_1 \approx 1.36 \), positive and statistically significant  
+- Time coefficient \( \hat\delta_2 \approx -3.46 \), negative but not statistically significant at the 5% level  
 - \( R^2 \) is high, which on its own makes the model look strong
 
 The Time effect has now **flipped sign** and looks strongly negative, even though the true effect is positive (0.1). On paper the model looks excellent, but the interpretation is wrong: more Time now seems to *reduce* Anxiety once StressSurvey is included.
