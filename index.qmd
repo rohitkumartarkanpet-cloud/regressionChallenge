@@ -354,7 +354,8 @@ plt.tight_layout()
 plt.show()
 ```
 
-Even with high \(R^2\) and small p-values, this model suggests the opposite of the truth about social media time.
+Even with a high \(R^2\) and at least one very small p-value, this model suggests the opposite of the truth about social media time.
+
 
 ---
 
@@ -423,7 +424,8 @@ plt.tight_layout()
 plt.show()
 ```
 
-The model that uses StressSurvey gives a large negative Time effect, while the model with true Stress recovers the intended mild positive effect.
+The model that uses StressSurvey gives a large negative Time effect, while the model with true Stress produces a Stress coefficient that is close to the truth and a Time coefficient that is much less extreme but still imprecise.
+
 
 ---
 
@@ -433,7 +435,8 @@ If the StressSurvey + Time model were reported in the news, a headline might rea
 
 > “After accounting for stress, more time on social media is linked to **lower** anxiety.”
 
-Everything in the regression table would look legitimate: high \(R^2\), significant coefficients, and reasonable standard errors. Parents reading that headline might feel reassured; social-media companies would be happy to share it.
+Everything in the regression table would look legitimate: high \(R^2\), at least one significant coefficient, and reasonable standard errors.
+
 
 If the correct model with true Stress were reported, a much more plausible headline would be:
 
@@ -448,8 +451,9 @@ The two models produce opposite stories even though they are both estimated on t
 The main distortion comes from how the survey compresses the high-stress range. To see what happens when the relationship is closer to linear, restrict the sample to
 
 \[
-Stress \le 2,
+\text{Stress} \le 2
 \]
+
 
 where `StressSurvey` is essentially three times Stress.
 
@@ -457,11 +461,13 @@ where `StressSurvey` is essentially three times Stress.
 pretty_coef_table(m_subset, "Subset regression (Stress ≤ 2): Anxiety ~ StressSurvey + Time")
 ```
 
+
 On this subset the results become:
 
-- StressSurvey coefficient \( \hat\beta_1 \approx 0.29 \) (p \approx 0.038)  
-- Time coefficient \( \hat\beta_2 \approx -0.09 \), small in magnitude and not statistically significant (p \approx 0.83)  
-- The model's \( R^2 \) remains high, but not perfect
+- StressSurvey coefficient \(\hat\beta_1 \approx 0.29\) (p \(\approx 0.038\))  
+- Time coefficient \(\hat\beta_2 \approx -0.09\), small in magnitude and not statistically significant (p \(\approx 0.83\))  
+- The model’s \(R^2\) remains high, but not perfect
+
 
 Since `StressSurvey ≈ 3 × Stress` in this region, a slope around 0.29 on the survey corresponds to just under 0.9 per unit of true Stress, which is much closer to the intended value of 1 than what we saw before. The Time effect is now very small and statistically indistinguishable from zero, which is much closer to the true mild effect of 0.1 than the large negative estimate we saw in the earlier model.
 ```{python}
