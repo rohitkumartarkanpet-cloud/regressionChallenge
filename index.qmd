@@ -529,8 +529,6 @@ When the proxy behaves almost linearly, the regression has a much easier time re
 
 ## Takeaways
 
-### Takeaways
-
 - A high \(R^2\) and statistically significant coefficients do **not** guarantee that the slopes tell a sensible story.  
 - Using a non-linear proxy (like StressSurvey) in place of a more direct measure (Stress) can completely change, or even invert, the apparent effect of another variable (Time).  
 - Visual checks, thinking carefully about how variables are measured, and exploring regions where relationships are closer to linear are essential before trusting a linear regression model for interpretation.
