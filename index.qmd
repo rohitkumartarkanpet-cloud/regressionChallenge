@@ -186,11 +186,7 @@ Anxiety = \alpha_0 + \alpha_1 \times StressSurvey + \varepsilon.
 pretty_coef_table(m_stressSurvey, "Bivariate regression: Anxiety ~ StressSurvey")
 ```
 
-From this fit (values match the starter file):
-
-- Intercept \( \hat\alpha_0 \approx -1.52 \)  
-- Slope on StressSurvey \( \hat\alpha_1 \approx 1.05 \)  
-- \( R^2 \approx 0.90 \)
+From this fit, the slope on **StressSurvey** is positive and statistically significant, and the \(R^2\) value shows that the model explains a large share of the variation in Anxiety.
 
 So each one-unit change in StressSurvey is associated with about 1 extra unit of Anxiety on average.
 
@@ -244,11 +240,7 @@ Anxiety = \gamma_0 + \gamma_1 \times Time + \varepsilon.
 pretty_coef_table(m_time_only, "Bivariate regression: Anxiety ~ Time")
 ```
 
-From this fit:
-
-- Intercept \( \hat\gamma_0 \approx -3.68 \)  
-- Slope on Time \( \hat\gamma_1 \approx 5.34 \)  
-- \( R^2 \approx 0.56 \)
+From this fit, the slope on **Time** is positive and statistically significant, but the \(R^2\) value is noticeably lower than in the StressSurvey model.
 
 The true marginal effect of Time is only 0.1, so the bivariate regression overstates the Time effect by more than an order of magnitude. Time is acting as a proxy for Stress because of the way the dataset was generated.
 
